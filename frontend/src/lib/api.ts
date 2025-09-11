@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import axios, { AxiosError, AxiosInstance } from "axios";
 import { clearMemoryTokens, getMemoryTokens, setMemoryTokens } from "./tokenMemory";
 import { Note, UserProfile } from "../../types";
@@ -133,7 +135,6 @@ export async function logout() {
     clearMemoryTokens();
   }
 }
-
 
 export async function getMe() {
   const res = await api.get(`/auth/me`);

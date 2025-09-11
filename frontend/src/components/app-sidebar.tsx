@@ -107,7 +107,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const updateTitleMutation = useMutation({
     mutationFn: async () => {
-      if (!editingNoteId) return null as any;
+      if (!editingNoteId) return null as string | null;
       const { updateNote } = await import("@/lib/api");
       return updateNote(editingNoteId, { title: editingTitle });
     },
@@ -124,7 +124,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const deleteNoteMutation = useMutation({
     mutationFn: async () => {
-      if (!editingNoteId) return { success: false } as any;
+      if (!editingNoteId) return { success: false } as { success: boolean };
       const { deleteNote } = await import("@/lib/api");
       return deleteNote(editingNoteId);
     },

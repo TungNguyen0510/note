@@ -13,7 +13,7 @@ export function SearchForm({
   query?: string;
   onQueryChange?: (value: string) => void;
 }) {
-  const { query = "", onQueryChange, ...rest } = props as any;
+  const { query = "", onQueryChange, ...rest } = props;
   return (
     <form {...rest}>
       <SidebarGroup className="py-0">

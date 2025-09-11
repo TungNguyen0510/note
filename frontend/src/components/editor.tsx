@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 "use client";
 
 import "@blocknote/core/fonts/inter.css";
@@ -128,6 +130,7 @@ export default function Editor() {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [noteId]);
 
   useEffect(() => {
