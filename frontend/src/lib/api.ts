@@ -2,7 +2,7 @@
 
 import axios, { AxiosError, AxiosInstance } from "axios";
 import { clearMemoryTokens, getMemoryTokens, setMemoryTokens } from "./tokenMemory";
-import { Note, UserProfile } from "../../types";
+import { Note, NoteWithContent, UserProfile } from "../../types";
 
 export function createApiClient(): AxiosInstance {
   const api = axios.create({
@@ -159,8 +159,8 @@ export async function getNotesByUserId(userId: string, q?: string) {
   return res.data as Note[];
 }
 
-export async function createNote(initialJson: any, title?: string) {
-  const res = await api.post(`/note`, { json: initialJson, title });
+export async function createNote(initialJson: any, title?: string, password?: string) {
+  const res = await api.post(`/note`, { json: initialJson, title, password });
   return res.data as Note;
 }
 
@@ -174,6 +174,31 @@ export async function updateNote(
 
 export async function deleteNote(id: string) {
   const res = await api.delete(`/note/${id}`);
+  return res.data as { success: boolean };
+}
+
+export async function getNoteContent(id: string, password: string) {
+  const res = await api.post(`/note/${id}/content`, { password });
+  return res.data as NoteWithContent;
+}
+
+export async function verifyNotePassword(id: string, password: string) {
+  const res = await api.post(`/note/${id}/verify-password`, { password });
+  return res.data as { success: boolean };
+}
+
+export async function setNotePassword(id: string, password: string) {
+  const res = await api.post(`/note/${id}/set-password`, { password });
+  return res.data as { success: boolean };
+}
+
+export async function changeNotePassword(id: string, oldPassword: string, newPassword: string) {
+  const res = await api.post(`/note/${id}/change-password`, { oldPassword, newPassword });
+  return res.data as { success: boolean };
+}
+
+export async function removeNotePassword(id: string, password: string) {
+  const res = await api.delete(`/note/${id}/password`, { data: { password } });
   return res.data as { success: boolean };
 }
 

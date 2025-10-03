@@ -6,20 +6,26 @@ import "@blocknote/core/fonts/inter.css";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/mantine/style.css";
-import { vi } from "@blocknote/core/locales";
+import { en } from "@blocknote/core/locales";
 import { createHighlighter } from "../../shiki.bundle";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Block } from "@blocknote/core";
-import { getNoteById, updateNote } from "@/lib/api";
-import { Note } from "../../types";
+import { getNoteById, getNoteContent, updateNote } from "@/lib/api";
+import { Note, NoteWithContent } from "../../types";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
 
 export default function Editor() {
   const [note, setNote] = useState<Note | null>(null);
+  const [noteContent, setNoteContent] = useState<NoteWithContent | null>(null);
   const [hash, setHash] = useState<string>(
     typeof window === "undefined" ? "" : window.location.hash
   );
   const [isHydrating, setIsHydrating] = useState<boolean>(true);
   const [saveTimer, setSaveTimer] = useState<any>(null);
+  const [showPasswordPrompt, setShowPasswordPrompt] = useState<boolean>(false);
+  const [password, setPassword] = useState<string>("");
+  const [passwordError, setPasswordError] = useState<string>("");
   const lastSavedDocStrRef = useRef<string>("");
   const noteId = useMemo(() => {
     const match = hash.match(/#note\/(.+)$/);
@@ -27,7 +33,7 @@ export default function Editor() {
   }, [hash]);
 
   const editor = useCreateBlockNote({
-    dictionary: vi,
+    dictionary: en,
     codeBlock: {
       indentLineWithTab: true,
       defaultLanguage: "typescript",
@@ -101,29 +107,36 @@ export default function Editor() {
     let cancelled = false;
     async function load() {
       setIsHydrating(true);
+      setShowPasswordPrompt(false);
+      setPasswordError("");
+
       if (!noteId) {
         setNote(null);
+        setNoteContent(null);
         editor.replaceBlocks(editor.document, []);
         setTimeout(() => setIsHydrating(false), 0);
         return;
       }
-      const n = await getNoteById(noteId);
-      if (cancelled) return;
-      setNote(n);
-      const initial = normalizeBlocks(n.json);
-      if (typeof window !== "undefined") {
-        console.debug("Note loaded", {
-          id: n.id,
-          json: n.json,
-          initialBlocks: initial,
-        });
-      }
+
       try {
-        lastSavedDocStrRef.current = JSON.stringify(initial);
-      } catch {
-        lastSavedDocStrRef.current = "";
+        const n = await getNoteById(noteId);
+        if (cancelled) return;
+        setNote(n);
+
+        if (n.hasPassword) {
+          setShowPasswordPrompt(true);
+          setTimeout(() => setIsHydrating(false), 0);
+          return;
+        }
+
+        const content = await getNoteContent(noteId, "");
+        if (cancelled) return;
+        setNoteContent(content);
+      } catch (error) {
+        console.error("Error loading note:", error);
+        setPasswordError("Failed to load note");
       }
-      editor.replaceBlocks(editor.document, initial);
+
       setTimeout(() => setIsHydrating(false), 0);
     }
     load();
@@ -132,6 +145,47 @@ export default function Editor() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [noteId]);
+
+  const handlePasswordSubmit = async () => {
+    if (!note?.id || !password) return;
+
+    try {
+      setPassword("");
+      setPasswordError("");
+      setIsHydrating(true);
+      const content = await getNoteContent(note.id, password);
+      setNoteContent(content);
+      setShowPasswordPrompt(false);
+      setTimeout(() => setIsHydrating(false), 0);
+    } catch (error) {
+      console.error("Password verification failed:", error);
+      setPasswordError("Invalid password");
+      setIsHydrating(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!noteContent || isHydrating) return;
+
+    const initial = normalizeBlocks(noteContent.json);
+    if (typeof window !== "undefined") {
+      console.debug("Updating editor with noteContent", {
+        id: noteContent.id,
+        json: noteContent.json,
+        initialBlocks: initial,
+      });
+    }
+
+    try {
+      lastSavedDocStrRef.current = JSON.stringify(initial);
+    } catch {
+      lastSavedDocStrRef.current = "";
+    }
+
+    setTimeout(() => {
+      editor.replaceBlocks(editor.document, initial);
+    }, 100);
+  }, [noteContent, isHydrating, editor]);
 
   useEffect(() => {
     function onHashChange() {
@@ -146,6 +200,57 @@ export default function Editor() {
       }
     };
   }, []);
+
+  if (showPasswordPrompt) {
+    return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-100px)]">
+        <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow-md">
+          <div>
+            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+              Enter Password
+            </h2>
+            <p className="mt-2 text-center text-sm text-gray-600">
+              This note is password protected
+            </p>
+          </div>
+          <form
+            className="mt-8 space-y-6"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handlePasswordSubmit();
+            }}
+          >
+            <div>
+              <label htmlFor="password" className="sr-only">
+                Password
+              </label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                required
+                className="w-full"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              {passwordError && (
+                <p className="mt-2 text-sm text-red-600">{passwordError}</p>
+              )}
+            </div>
+            <div>
+              <Button
+                type="submit"
+                className="group relative w-full cursor-pointer"
+              >
+                Unlock Note
+              </Button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <BlockNoteView

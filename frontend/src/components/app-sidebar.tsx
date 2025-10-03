@@ -25,6 +25,11 @@ import {
   logout,
   createNote,
 } from "@/lib/api";
+import {
+  setNotePassword,
+  changeNotePassword,
+  removeNotePassword,
+} from "@/lib/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import {
@@ -36,13 +41,15 @@ import {
   DialogTitle,
 } from "./ui/dialog";
 import { Label } from "./ui/label";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Lock } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
+import { NotePasswordState } from "../../types";
+import { Input } from "./ui/input";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { isMobile, setOpenMobile } = useSidebar();
@@ -83,6 +90,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     React.useState(false);
   const [editingNoteId, setEditingNoteId] = React.useState<string | null>(null);
   const [editingTitle, setEditingTitle] = React.useState<string>("");
+
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = React.useState(false);
+  const [passwordAction, setPasswordAction] =
+    React.useState<NotePasswordState>("set");
+  const [password, setPassword] = React.useState("");
+  const [oldPassword, setOldPassword] = React.useState("");
+  const [newPassword, setNewPassword] = React.useState("");
 
   const deleteMutation = useMutation({
     mutationFn: async () => deleteAccount(),
@@ -175,7 +189,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             Continue with Google
           </Button>
         )}
-        {/* Confirm delete dialog */}
         <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
           <DialogContent>
             <DialogHeader>
@@ -211,7 +224,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SearchForm query={search} onQueryChange={setSearch} />
       </SidebarHeader>
       <SidebarContent>
-        {/* Your Notes */}
         <SidebarGroup>
           <Button
             className="mx-2"
@@ -249,9 +261,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         }
                       }}
                     >
-                      <Label className="truncate">
-                        {note.title || "Untitled"}
-                      </Label>
+                      <div className="flex items-center gap-2">
+                        <Label className="truncate">
+                          {note.title || "Untitled"}
+                        </Label>
+                        {(note as any).hasPassword && (
+                          <Lock className="h-3 w-3 text-gray-500" />
+                        )}
+                      </div>
                     </SidebarMenuButton>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -259,7 +276,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-40">
+                      <DropdownMenuContent align="end" className="w-48">
                         <DropdownMenuItem
                           onClick={() => {
                             setEditingNoteId(note.id);
@@ -269,6 +286,38 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         >
                           Edit title
                         </DropdownMenuItem>
+                        {(note as any).hasPassword ? (
+                          <>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setEditingNoteId(note.id);
+                                setPasswordAction("change");
+                                setIsPasswordDialogOpen(true);
+                              }}
+                            >
+                              Change password
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setEditingNoteId(note.id);
+                                setPasswordAction("remove");
+                                setIsPasswordDialogOpen(true);
+                              }}
+                            >
+                              Remove password
+                            </DropdownMenuItem>
+                          </>
+                        ) : (
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setEditingNoteId(note.id);
+                              setPasswordAction("set");
+                              setIsPasswordDialogOpen(true);
+                            }}
+                          >
+                            Set password
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem
                           className="text-red-600 focus:text-red-600"
                           onClick={() => {
@@ -295,7 +344,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarGroup>
       </SidebarContent>
       <SidebarRail />
-      {/* Edit title dialog */}
       <Dialog
         open={isEditTitleDialogOpen}
         onOpenChange={setIsEditTitleDialogOpen}
@@ -309,9 +357,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </DialogHeader>
           <div className="grid gap-2 py-2">
             <Label htmlFor="edit-title">Title</Label>
-            <input
+            <Input
               id="edit-title"
-              className="h-9 rounded-md border px-3 text-sm"
+              className="w-full"
               value={editingTitle}
               onChange={(e) => setEditingTitle(e.target.value)}
               placeholder="Untitled"
@@ -334,8 +382,124 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <Dialog
+        open={isPasswordDialogOpen}
+        onOpenChange={setIsPasswordDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {passwordAction === "set" && "Set password"}
+              {passwordAction === "change" && "Change password"}
+              {passwordAction === "remove" && "Remove password"}
+            </DialogTitle>
+            <DialogDescription>
+              {passwordAction === "set" && "Protect this note with a password."}
+              {passwordAction === "change" &&
+                "Update the password for this note."}
+              {passwordAction === "remove" &&
+                "Enter the current password to remove password protection."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 py-2">
+            {passwordAction === "change" && (
+              <div className="grid gap-2">
+                <Label htmlFor="old-password">Current password</Label>
+                <Input
+                  id="old-password"
+                  type="password"
+                  className="w-full"
+                  value={oldPassword}
+                  onChange={(e) => setOldPassword(e.target.value)}
+                />
+              </div>
+            )}
+            {passwordAction === "remove" && (
+              <div className="grid gap-2">
+                <Label htmlFor="current-password">Current password</Label>
+                <Input
+                  id="current-password"
+                  type="password"
+                  className="w-full"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter current password"
+                />
+              </div>
+            )}
+            {passwordAction !== "remove" && (
+              <div className="grid gap-2">
+                <Label htmlFor="new-password">
+                  {passwordAction === "set" ? "Password" : "New password"}
+                </Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  className="w-full"
+                  value={passwordAction === "change" ? newPassword : password}
+                  onChange={(e) =>
+                    passwordAction === "change"
+                      ? setNewPassword(e.target.value)
+                      : setPassword(e.target.value)
+                  }
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsPasswordDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant={passwordAction === "remove" ? "destructive" : "default"}
+              onClick={async () => {
+                if (!editingNoteId) return;
+                if (passwordAction === "set" && !password) return;
+                if (
+                  passwordAction === "change" &&
+                  (!oldPassword || !newPassword)
+                )
+                  return;
+                if (passwordAction === "remove" && !password) return;
 
-      {/* Delete note confirm dialog */}
+                if (passwordAction === "set") {
+                  await setNotePassword(editingNoteId, password);
+                } else if (passwordAction === "change") {
+                  await changeNotePassword(
+                    editingNoteId,
+                    oldPassword,
+                    newPassword
+                  );
+                } else if (passwordAction === "remove") {
+                  await removeNotePassword(editingNoteId, password);
+                }
+                if (profileQuery.data?.id) {
+                  queryClient.invalidateQueries({
+                    queryKey: ["notes", profileQuery.data.id],
+                  });
+                }
+                setIsPasswordDialogOpen(false);
+                setPassword("");
+                setOldPassword("");
+                setNewPassword("");
+              }}
+              disabled={
+                !editingNoteId ||
+                (passwordAction === "set" && !password) ||
+                (passwordAction === "change" &&
+                  (!oldPassword || !newPassword)) ||
+                (passwordAction === "remove" && !password)
+              }
+            >
+              {passwordAction === "remove" ? "Remove password" : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog
         open={isNoteDeleteDialogOpen}
         onOpenChange={setIsNoteDeleteDialogOpen}
