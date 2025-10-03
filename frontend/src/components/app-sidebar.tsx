@@ -262,12 +262,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       }}
                     >
                       <div className="flex items-center gap-2">
-                        <Label className="truncate">
-                          {note.title || "Untitled"}
-                        </Label>
                         {note.hasPassword && (
                           <Lock className="h-3 w-3 text-gray-500" />
                         )}
+                        <Label className="truncate">
+                          {note.title || "Untitled"}
+                        </Label>
                       </div>
                     </SidebarMenuButton>
                     <DropdownMenu>
