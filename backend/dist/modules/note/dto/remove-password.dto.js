@@ -9,27 +9,15 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CreateNoteDto = void 0;
+exports.RemovePasswordDto = void 0;
 const class_validator_1 = require("class-validator");
-class CreateNoteDto {
-    title;
-    json;
+class RemovePasswordDto {
     password;
 }
-exports.CreateNoteDto = CreateNoteDto;
+exports.RemovePasswordDto = RemovePasswordDto;
 __decorate([
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
-], CreateNoteDto.prototype, "title", void 0);
-__decorate([
-    (0, class_validator_1.IsObject)(),
-    __metadata("design:type", Object)
-], CreateNoteDto.prototype, "json", void 0);
-__decorate([
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.MinLength)(1, { message: 'Password cannot be empty' }),
-    __metadata("design:type", String)
-], CreateNoteDto.prototype, "password", void 0);
-//# sourceMappingURL=create-note.dto.js.map
+], RemovePasswordDto.prototype, "password", void 0);
+//# sourceMappingURL=remove-password.dto.js.map

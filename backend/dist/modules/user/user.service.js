@@ -83,6 +83,7 @@ let UserService = class UserService {
             await this.database.query `UPDATE users SET id_new = gen_random_uuid() WHERE id_new IS NULL`;
             await this.database.query `ALTER TABLE users DROP CONSTRAINT IF EXISTS users_pkey`;
             await this.database.query `ALTER TABLE users DROP COLUMN IF EXISTS id`;
+            await this.database.query `ALTER TABLE users DROP COLUMN IF EXISTS id`;
             await this.database.query `ALTER TABLE users RENAME COLUMN id_new TO id`;
             await this.database.query `ALTER TABLE users ADD PRIMARY KEY (id)`;
         }

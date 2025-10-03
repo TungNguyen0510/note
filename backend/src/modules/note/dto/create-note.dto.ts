@@ -1,15 +1,17 @@
-import { IsObject, IsOptional, IsString } from 'class-validator';
+import { IsObject, IsOptional, IsString, MinLength } from 'class-validator';
 
-/** Payload to create a note. */
 export class CreateNoteDto {
-  /** Optional title for the note. */
   @IsString()
   @IsOptional()
   title?: string;
 
-  /** Arbitrary JSON content. */
   @IsObject()
   json!: Record<string, any>;
+
+  @IsString()
+  @IsOptional()
+  @MinLength(1, { message: 'Password cannot be empty' })
+  password?: string;
 }
 
 

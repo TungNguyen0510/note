@@ -2,16 +2,10 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import * as argon2 from 'argon2';
 
-/**
- * UserService encapsulates user persistence and credential operations.
- */
 @Injectable()
 export class UserService implements OnModuleInit {
   constructor(private readonly database: DatabaseService) {}
 
-  /**
-   * Ensure the users table exists on startup for demo purposes.
-   */
   async onModuleInit() {
     await this.ensureSchema();
   }
@@ -20,10 +14,8 @@ export class UserService implements OnModuleInit {
 
   private async ensureSchema() {
     if (this.schemaInitialized) return;
-    // Ensure UUID generation capability
     await this.database.query`CREATE EXTENSION IF NOT EXISTS pgcrypto`;
 
-    // Create table with UUID id if not exists
     await this.database.query`
       CREATE TABLE IF NOT EXISTS users (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -34,7 +26,6 @@ export class UserService implements OnModuleInit {
       )
     `;
 
-    // If table exists with non-UUID id, migrate to UUID
     const col = await this.database.query<{ data_type: string }>`
       SELECT data_type
       FROM information_schema.columns
@@ -42,23 +33,19 @@ export class UserService implements OnModuleInit {
     `;
     const currentType = col[0]?.data_type;
     if (currentType && currentType !== 'uuid') {
-      // Add new UUID column, backfill, switch PK
       await this.database.query`ALTER TABLE users ADD COLUMN IF NOT EXISTS id_new UUID`;
       const countNew = await this.database.query<{ count: string }>`
         SELECT COUNT(1) as count FROM information_schema.columns
         WHERE table_name = 'users' AND column_name = 'id_new'
-      `;
-      // Backfill only if id_new exists and any NULLs remain
+      `;  
       await this.database.query`UPDATE users SET id_new = gen_random_uuid() WHERE id_new IS NULL`;
-      // Drop existing PK constraint (assumed default name users_pkey)
       await this.database.query`ALTER TABLE users DROP CONSTRAINT IF EXISTS users_pkey`;
-      // Drop old id and rename
+      await this.database.query`ALTER TABLE users DROP COLUMN IF EXISTS id`;
       await this.database.query`ALTER TABLE users DROP COLUMN IF EXISTS id`;
       await this.database.query`ALTER TABLE users RENAME COLUMN id_new TO id`;
       await this.database.query`ALTER TABLE users ADD PRIMARY KEY (id)`;
     }
 
-    // Ensure id column has default, is non-null, and has a primary key when type already UUID
     const idMeta = await this.database.query<{
       column_default: string | null;
       is_nullable: 'YES' | 'NO';
@@ -71,18 +58,15 @@ export class UserService implements OnModuleInit {
     const hasDefault = !!idMeta[0]?.column_default;
     const isNullable = idMeta[0]?.is_nullable === 'YES';
 
-    // Set default if missing
     if (!hasDefault) {
       await this.database.query`ALTER TABLE users ALTER COLUMN id SET DEFAULT gen_random_uuid()`;
     }
 
-    // Backfill NULL ids (if any), then enforce NOT NULL
     if (isNullable) {
       await this.database.query`UPDATE users SET id = gen_random_uuid() WHERE id IS NULL`;
       await this.database.query`ALTER TABLE users ALTER COLUMN id SET NOT NULL`;
     }
-
-    // Ensure a primary key exists on id
+    
     const pk = await this.database.query<{ conname: string }>`
       SELECT conname
       FROM pg_constraint

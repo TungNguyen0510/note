@@ -8,9 +8,6 @@ import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { UserModule } from '../user/user.module';
 import { GoogleStrategy } from './strategies/google.strategy';
 
-/**
- * AuthModule wires up JWT auth (access + refresh) and exposes endpoints.
- */
 @Module({
   imports: [PassportModule, JwtModule.register({}), UserModule],
   providers: [AuthService, JwtStrategy, JwtRefreshStrategy, GoogleStrategy],
