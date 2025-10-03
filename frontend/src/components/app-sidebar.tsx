@@ -265,7 +265,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         <Label className="truncate">
                           {note.title || "Untitled"}
                         </Label>
-                        {(note as any).hasPassword && (
+                        {note.hasPassword && (
                           <Lock className="h-3 w-3 text-gray-500" />
                         )}
                       </div>
@@ -286,7 +286,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         >
                           Edit title
                         </DropdownMenuItem>
-                        {(note as any).hasPassword ? (
+                        {note.hasPassword ? (
                           <>
                             <DropdownMenuItem
                               onClick={() => {
